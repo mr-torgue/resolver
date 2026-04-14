@@ -1,8 +1,8 @@
-# example
+# resolver
 
 ## Name
 
-*example* - prints "example" after a query is handled.
+*resolver* - prints "resolver" after a query is handled.
 
 ## Description
 

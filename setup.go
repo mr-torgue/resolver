@@ -4,6 +4,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
+  	"github.com/domainr/dnsr"
 )
 
 // init registers this plugin.
@@ -21,8 +22,17 @@ func setup(c *caddy.Controller) error {
 	}
 
 	// Add the Plugin to CoreDNS, so Servers can use it in their plugin chain.
+	//r := dnsr.NewResolver(dnsr.WithExpiry())
+	//r := New()
+
+
+	//c.OnStartup(func() error {
+	//	ca.viewMetricLabel = dnsserver.GetConfig(c).ViewName
+	//	return nil
+	//})
+	r := dnsr.NewResolver(dnsr.WithExpiry())
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
-		return Resolver{Next: next}
+		return Resolver {R: r, Next: next}
 	})
 
 	// All OK, return a nil error.

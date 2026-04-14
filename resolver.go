@@ -5,14 +5,13 @@ package resolver
 
 import (
 	"context"
-  	//"fmt"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/metrics"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 
 	"github.com/miekg/dns"
-  	//"github.com/domainr/dnsr"
+  	"github.com/domainr/dnsr"
 )
 
 // Define log to be a logger with the plugin name in it. This way we can just use log.Info and
@@ -21,9 +20,17 @@ var log = clog.NewWithPlugin("resolver")
 
 // Example is an example plugin to show how to write a plugin.
 type Resolver struct {
-	//resolver dnsr.Resolver
+	R *dnsr.Resolver
 	Next plugin.Handler
 }
+
+// New returns a new Resolver.
+//func New(r *dnsr.Resolver, next plugin.Handler) Resolver {
+//	return Resolver{
+//		R: r,
+//		Next: next,
+//	}
+//}
 
 // ServeDNS implements the plugin.Handler interface. This method gets called when example is used
 // in a Server.
@@ -34,12 +41,15 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	// answer comes back, it will print "example".
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
-	log.Debug("Received response - 2")
-	log.Debug(r.String());
-	// Parse the request here
-	//for _, rr := range e.resolver.Resolve("google.com", "A") {
-    //	fmt.Println(rr.String())
-  	//}
+	log.Info(r.String())
+	log.Infof("Nr. questions: %d\n", len(r.Question))
+	for i:=0; i<len(r.Question); i++ {
+		log.Infof("Qname: %s, Qtype: %d\n", r.Question[i].Name, r.Question[i].Qtype)
+		for _, rr := range e.R.Resolve(r.Question[i].Name, "A") {
+			log.Info(rr.String())
+		}
+	}
+
 	// Wrap.
 	pw := NewResponsePrinter(w)
 
