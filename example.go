@@ -21,7 +21,7 @@ var log = clog.NewWithPlugin("example")
 
 // Example is an example plugin to show how to write a plugin.
 type Example struct {
-	resolver dnsr.Resolver
+	//resolver dnsr.Resolver
 	Next plugin.Handler
 }
 
@@ -34,7 +34,7 @@ func (e Example) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 	// answer comes back, it will print "example".
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
-	log.Debug("Received response")
+	log.Debug("Received response - 2")
 	log.Debug(r.String());
 	// Parse the request here
 	for _, rr := range e.resolver.Resolve("google.com", "A") {
