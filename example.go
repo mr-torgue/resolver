@@ -5,12 +5,14 @@ package example
 
 import (
 	"context"
+  	"fmt"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/metrics"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 
 	"github.com/miekg/dns"
+  	"github.com/domainr/dnsr"
 )
 
 // Define log to be a logger with the plugin name in it. This way we can just use log.Info and
@@ -19,6 +21,7 @@ var log = clog.NewWithPlugin("example")
 
 // Example is an example plugin to show how to write a plugin.
 type Example struct {
+	resolver dnsr.Resolver
 	Next plugin.Handler
 }
 
@@ -32,7 +35,11 @@ func (e Example) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
 	log.Debug("Received response")
-
+	log.Debug(r.String());
+	// Parse the request here
+	for _, rr := range e.resolver.Resolve("google.com", "A") {
+    	fmt.Println(rr.String())
+  	}
 	// Wrap.
 	pw := NewResponsePrinter(w)
 
