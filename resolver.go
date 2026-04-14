@@ -1,33 +1,33 @@
 // Package example is a CoreDNS plugin that prints "example" to stdout on every packet received.
 //
 // It serves as an example CoreDNS plugin with numerous code comments.
-package example
+package resolver
 
 import (
 	"context"
-  	"fmt"
+  	//"fmt"
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/metrics"
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 
 	"github.com/miekg/dns"
-  	"github.com/domainr/dnsr"
+  	//"github.com/domainr/dnsr"
 )
 
 // Define log to be a logger with the plugin name in it. This way we can just use log.Info and
 // friends to log.
-var log = clog.NewWithPlugin("example")
+var log = clog.NewWithPlugin("resolver")
 
 // Example is an example plugin to show how to write a plugin.
-type Example struct {
+type Resolver struct {
 	//resolver dnsr.Resolver
 	Next plugin.Handler
 }
 
 // ServeDNS implements the plugin.Handler interface. This method gets called when example is used
 // in a Server.
-func (e Example) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	// This function could be simpler. I.e. just fmt.Println("example") here, but we want to show
 	// a slightly more complex example as to make this more interesting.
 	// Here we wrap the dns.ResponseWriter in a new ResponseWriter and call the next plugin, when the
@@ -37,9 +37,9 @@ func (e Example) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 	log.Debug("Received response - 2")
 	log.Debug(r.String());
 	// Parse the request here
-	for _, rr := range e.resolver.Resolve("google.com", "A") {
-    	fmt.Println(rr.String())
-  	}
+	//for _, rr := range e.resolver.Resolve("google.com", "A") {
+    //	fmt.Println(rr.String())
+  	//}
 	// Wrap.
 	pw := NewResponsePrinter(w)
 
@@ -51,7 +51,7 @@ func (e Example) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg)
 }
 
 // Name implements the Handler interface.
-func (e Example) Name() string { return "example" }
+func (e Resolver) Name() string { return "resolver" }
 
 // ResponsePrinter wrap a dns.ResponseWriter and will write example to standard output when WriteMsg is called.
 type ResponsePrinter struct {
@@ -65,6 +65,6 @@ func NewResponsePrinter(w dns.ResponseWriter) *ResponsePrinter {
 
 // WriteMsg calls the underlying ResponseWriter's WriteMsg method and prints "example" to standard output.
 func (r *ResponsePrinter) WriteMsg(res *dns.Msg) error {
-	log.Info("example")
+	log.Info("resolver")
 	return r.ResponseWriter.WriteMsg(res)
 }
