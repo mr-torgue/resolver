@@ -59,7 +59,7 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	log.Debug("hi!")
 	// Call next plugin (if any).
 	//return plugin.NextOrFailure(e.Name(), e.Next, ctx, pw, r)
-	return dns.RcodeServerFailure, nil
+	return dns.RcodeSuccess, nil
 }
 
 // Name implements the Handler interface.
