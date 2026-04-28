@@ -41,6 +41,7 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	// answer comes back, it will print "example".
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
+	log.Info("hello!")
 	log.Debugf("Received query: %s\n", r.String())
 	rmsg := e.R.ResolveMsg(r) 
 	if rmsg != nil {
@@ -55,6 +56,7 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	// Export metric with the server label set to the current server handling the request.
 	requestCount.WithLabelValues(metrics.WithServer(ctx)).Inc()
 
+	log.Debug("hi!")
 	// Call next plugin (if any).
 	//return plugin.NextOrFailure(e.Name(), e.Next, ctx, pw, r)
 	return dns.RcodeServerFailure, nil
