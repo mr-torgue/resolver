@@ -12,12 +12,12 @@ import (
 	"github.com/coredns/coredns/plugin/test"
 
 	"github.com/miekg/dns"
-  	"github.com/domainr/dnsr"
+  	"github.com/mr-torgue/dnsr"
 )
 
 func TestExample(t *testing.T) {
 	// Create a new Example Plugin. Use the test.ErrorHandler as the next plugin.
-	res := dnsr.NewResolver(dnsr.WithExpiry())
+	res := dnsr.NewResolver(dnsr.WithExpire(true))
 	x := Resolver{R: res, Next: test.ErrorHandler()}
 
 	// Setup a new output buffer that is *not* standard output, so we can check if

@@ -11,7 +11,7 @@ import (
 	clog "github.com/coredns/coredns/plugin/pkg/log"
 
 	"github.com/miekg/dns"
-  	"github.com/domainr/dnsr"
+  	"github.com/mr-torgue/dnsr"
 )
 
 // Define log to be a logger with the plugin name in it. This way we can just use log.Info and
@@ -41,23 +41,23 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	// answer comes back, it will print "example".
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
-	log.Info(r.String())
-	log.Infof("Nr. questions: %d\n", len(r.Question))
-	for i:=0; i<len(r.Question); i++ {
-		log.Infof("Qname: %s, Qtype: %d\n", r.Question[i].Name, r.Question[i].Qtype)
-		for _, rr := range e.R.Resolve(r.Question[i].Name, "A") {
-			log.Info(rr.String())
-		}
+	log.Debugf("Received query: %s\n", r.String())
+	rmsg := e.R.ResolveMsg(r) 
+	if rmsg != nil {
+		log.Debugf("Found response: %s\n", rmsg.String())
+		w.WriteMsg(rmsg)
+		return dns.RcodeSuccess, nil
 	}
 
 	// Wrap.
-	pw := NewResponsePrinter(w)
+	//pw := NewResponsePrinter(w)
 
 	// Export metric with the server label set to the current server handling the request.
 	requestCount.WithLabelValues(metrics.WithServer(ctx)).Inc()
 
 	// Call next plugin (if any).
-	return plugin.NextOrFailure(e.Name(), e.Next, ctx, pw, r)
+	//return plugin.NextOrFailure(e.Name(), e.Next, ctx, pw, r)
+	return dns.RcodeServerFailure, nil
 }
 
 // Name implements the Handler interface.

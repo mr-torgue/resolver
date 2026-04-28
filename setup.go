@@ -4,7 +4,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
-  	"github.com/domainr/dnsr"
+  	"github.com/mr-torgue/dnsr"
 )
 
 // init registers this plugin.
@@ -30,7 +30,7 @@ func setup(c *caddy.Controller) error {
 	//	ca.viewMetricLabel = dnsserver.GetConfig(c).ViewName
 	//	return nil
 	//})
-	r := dnsr.NewResolver(dnsr.WithExpiry())
+	r := dnsr.NewResolver(dnsr.WithExpire(true))
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
 		return Resolver {R: r, Next: next}
 	})
