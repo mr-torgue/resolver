@@ -24,13 +24,6 @@ type Resolver struct {
 	Next plugin.Handler
 }
 
-// New returns a new Resolver.
-//func New(r *dnsr.Resolver, next plugin.Handler) Resolver {
-//	return Resolver{
-//		R: r,
-//		Next: next,
-//	}
-//}
 
 // ServeDNS implements the plugin.Handler interface. This method gets called when example is used
 // in a Server.
@@ -41,12 +34,10 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	// answer comes back, it will print "example".
 
 	// Debug log that we've have seen the query. This will only be shown when the debug plugin is loaded.
-	log.Debug("hello!")
 	log.Debugf("Received query: %s\n", r.String())
 	rmsg := e.R.ResolveMsg(r) 
 	if rmsg != nil {
 		log.Infof("Found response: %s\n", rmsg.String())
-		log.Infof("hi!")
 		w.WriteMsg(rmsg)
 		return dns.RcodeSuccess, nil
 	}
