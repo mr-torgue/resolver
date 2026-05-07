@@ -1,6 +1,12 @@
 package resolver
 
 import (
+	"time"
+	"os"
+	"strings"
+	"strconv"
+	"slices"
+
 	"github.com/coredns/caddy"
 	"github.com/coredns/coredns/core/dnsserver"
 	"github.com/coredns/coredns/plugin"
@@ -10,8 +16,8 @@ import (
 // init registers this plugin.
 func init() { plugin.Register("resolver", setup) }
 
-// setup is the function that gets called when the config parser see the token "example". Setup is responsible
-// for parsing any extra options the example plugin may have. The first token this function sees is "example".
+// setup is the function that gets called when the config parser see the token "resolver".
+// TODO(mr-torgue): stricter checks
 func setup(c *caddy.Controller) error {
 	// parse configuration
 	rslvr, err := resolverParse(c)
@@ -32,8 +38,9 @@ func isTimeString(s string) bool {
     return err == nil
 }
 
-func fileExists(s string) {
-	return ...
+func fileExists(s string) bool {
+	_, err := os.Stat(s)
+	return err == nil
 }
 
 // resolveParse parses the config file. Format:
@@ -45,22 +52,21 @@ func fileExists(s string) {
 //    edns [Bool]
 //    udpsize: [Uint]
 //    dnssecValidation [Bool]
-//    clienttype [String]
+//    clientType [String]
 // } 
+// TODO(mr-torgue): tighter checks
 func resolverParse(c *caddy.Controller) (*dnsr.Resolver, error) {
-
-	var options []dnsr.Option
 
 	// set default values
 	var (
 		timeout = "10s"
 		clientTimeout = "2s"
 		hints = "named.root"
-		anchor = "anchor.root"
+		//anchor = "anchor.root"
 		edns = false
-		udpsize = 1232
+		udpsize uint16 = 1232
 		dnssec = false
-		clienttype = "udp"
+		clientType = "udp"
 	) 
 
 	for c.Next() {
@@ -93,6 +99,7 @@ func resolverParse(c *caddy.Controller) (*dnsr.Resolver, error) {
 			case "anchor":
 				// TODO(mr-torgue): check if file exists and is in right format
 				// TODO(mr-torgue): not-implemented
+				return nil, c.Errf("anchor has not been implemented yet!")
 			case "edns":
 				if c.NextArg() {
 					edns = strings.ToLower(c.Val()) == "false"
@@ -101,22 +108,22 @@ func resolverParse(c *caddy.Controller) (*dnsr.Resolver, error) {
 				if !c.NextArg() {
 					return nil, c.Errf("udpsize not provided, format: udpsize \"[UINT]\"")
 				}
-				udpsize, err := strconv.ParseUint(c.Val(), 10, 32)
+				tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
 				if err != nil {
-					return nil, c.Errf("could not parse unsigned integer %s for udpsize: %s", c.Val(), e)
+					return nil, c.Errf("could not parse unsigned integer %s for udpsize: %s", c.Val(), err)
 				}
+				udpsize = uint16(tmpsize)
 			case "dnssecValidation":
 				if c.NextArg() {
 					dnssec = strings.ToLower(c.Val()) == "false"
 				}
-			case "clienttype":
+			case "clientType":
 				if !c.NextArg() {
 					return nil, c.Errf("udpsize not provided, format: udpsize \"[UINT]\"")
 				}
-				clienttype = c.Val()
-				if clienttype not in ["udp", "tcp", "dot", "doq", "doh"] {
+				clientType = c.Val()
+				if !slices.Contains([]string{"udp", "tcp", "dot", "doq", "doh"}, clientType) {
 					return nil, c.Errf("client type only supports udp, tcp, dot, doq, or doh")
-
 				}
 			default:
 				return nil, c.Errf("unknown property '%s'", c.Val())
@@ -125,21 +132,21 @@ func resolverParse(c *caddy.Controller) (*dnsr.Resolver, error) {
 	}
 
 	if dnssec && !edns {
-		return nil c.Errf("edns needs to be enabled for dnssec")
+		return nil, c.Errf("edns needs to be enabled for dnssec")
 	}
 
-	rslvr, err := dnsr.NewResolver(
+	rslvr := dnsr.NewResolver(
 		dnsr.WithTimeout(timeout),
 		dnsr.WithClientTimeout(clientTimeout),
 		dnsr.WithRootfile(hints),
 		dnsr.WithEDNS(edns),
 		dnsr.WithUDPSize(udpsize),
 		dnsr.WithDNSSEC(dnssec),
-		dnsr.WithClienttype(clienttype),
+		dnsr.WithClientType(clientType),
 	)
 	// return error if we could not create the resolver
-	if err != nil {
-		return nil, err
+	if rslvr == nil {
+		return nil, c.Errf("could not create resolver")
 	}
 	return rslvr, nil
 }
