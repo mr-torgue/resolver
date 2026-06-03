@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/coredns/caddy"
-  	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestSetup tests the various things that should be parsed by setup.
@@ -16,13 +16,12 @@ func TestSetup(t *testing.T) {
 	}
 }
 
-
 func TestResolverParse(t *testing.T) {
 
 	tests := []struct {
-		name				string
-		input 		        string
-		shouldErr           bool
+		name      string
+		input     string
+		shouldErr bool
 		//expectedErr			string
 
 	}{
@@ -41,7 +40,7 @@ func TestResolverParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
-        t.Run(test.name, func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			c := caddy.NewTestController("dns", test.input)
 			rslvr, err := resolverParse(c)
 
