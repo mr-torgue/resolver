@@ -17,13 +17,14 @@ func init() { plugin.Register("resolver", setup) }
 // TODO(mr-torgue): stricter checks
 func setup(c *caddy.Controller) error {
 	// parse configuration
-	rslvr, err := resolverParse(c)
+	R, err := resolverParse(c)
 	if err != nil {
 		return plugin.Error("resolver", err)
 	}
 	// r := dnsr.NewResolver(dnsr.WithExpire(true))
 	dnsserver.GetConfig(c).AddPlugin(func(next plugin.Handler) plugin.Handler {
-		return Resolver{R: rslvr, Next: next}
+		R.Next = next
+		return R
 	})
 
 	// All OK, return a nil error.
@@ -42,18 +43,21 @@ func fileExists(s string) bool {
 
 // resolveParse parses the config file. Format:
 //
-//		resolver {
-//		   timeout [TimeString]
-//		   hints [Filename]
-//		   anchor [Filename]
-//		   udpsize: [Uint]
-//		   clientType [String]
-//	       nofallback
-//		}
+//			resolver {
+//			   timeout [TimeString]
+//			   hints [Filename]
+//			   anchor [Filename]
+//			   udpsize: [Uint]
+//			   clientType [String]
+//		       nofallback
+//	        nodnssec
+//	        notlsverify
+//			}
 //
 // TODO(mr-torgue): tighter checks
-func resolverParse(c *caddy.Controller) (*resolver.Resolver, error) {
+func resolverParse(c *caddy.Controller) (*Resolver, error) {
 
+	var R = new(Resolver)
 	// set default values
 	var (
 		timeout = "1s"
@@ -62,7 +66,9 @@ func resolverParse(c *caddy.Controller) (*resolver.Resolver, error) {
 		//udpsize    uint16 = 1232
 		clientType = "udp"
 		fallback   = true
+		tlsverify  = true
 	)
+	R.DNSSEC = true
 
 	for c.Next() {
 		for c.NextBlock() {
@@ -118,6 +124,10 @@ func resolverParse(c *caddy.Controller) (*resolver.Resolver, error) {
 				}
 			case "nofallback":
 				fallback = false
+			case "nodnssec":
+				R.DNSSEC = false
+			case "notlsverify":
+				tlsverify = false
 			default:
 				return nil, c.Errf("unknown property '%s'", c.Val())
 			}
@@ -128,10 +138,11 @@ func resolverParse(c *caddy.Controller) (*resolver.Resolver, error) {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
 	// use the same timeout for all clients, not great but should work
-	rslvr := resolver.NewResolver(resolver.ConfigBuilder(resolver.WithClient(clientType, fallback), resolver.WithCustomRoot(hints, anchor), resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration)))
+	rslvr := resolver.NewResolver(resolver.ConfigBuilder(resolver.WithClient(clientType, fallback), resolver.WithCustomRoot(hints, anchor), resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration), resolver.WithTLSVerification(tlsverify)))
 	// return error if we could not create the resolver
 	if rslvr == nil {
 		return nil, c.Errf("could not create resolver")
 	}
-	return rslvr, nil
+	R.R = rslvr
+	return R, nil
 }

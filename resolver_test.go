@@ -218,8 +218,8 @@ func TestResolver(t *testing.T) {
 
 		// setup Resolver using resolverParse
 		c := caddy.NewTestController("dns", ttconfig.config)
-		rslvr, err := resolverParse(c)
-		x := Resolver{R: rslvr, Next: test.ErrorHandler()}
+		x, err := resolverParse(c)
+		x.Next = test.ErrorHandler()
 		assert.Nil(t, err, "expected an error")
 		var (
 			qmsg dns.Msg

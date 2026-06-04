@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/coredns/caddy"
 	"github.com/stretchr/testify/assert"
@@ -19,23 +20,39 @@ func TestSetup(t *testing.T) {
 func TestResolverParse(t *testing.T) {
 
 	tests := []struct {
-		name      string
-		input     string
-		shouldErr bool
+		name               string
+		input              string
+		shouldErr          bool
+		expectedDNSSEC     bool
+		expectedTimeout    time.Duration
+		expectedHints      string
+		expectedAnchor     string
+		expectedClientType string
+		expectedFallback   bool
+		expectedTLSVerify  bool
 		//expectedErr			string
 
 	}{
 		{
-			"should work with most basic setup",
-			"resolver",
-			false,
+			name:           "should work with most basic setup",
+			input:          "resolver",
+			shouldErr:      false,
+			expectedDNSSEC: true,
 		},
 		{
-			"should fail because of non-existent option",
-			`resolver {
+			name: "should fail because of non-existent option",
+			input: `resolver {
 				no_reload
 			}`,
-			true,
+			shouldErr: true,
+		},
+		{
+			name: "should with complex settings",
+			input: `resolver {
+				nodnssec
+			}`,
+			shouldErr:      false,
+			expectedDNSSEC: false,
 		},
 	}
 
@@ -50,6 +67,7 @@ func TestResolverParse(t *testing.T) {
 			} else {
 				assert.Nil(t, err, "did not expect an error")
 				assert.NotNil(t, rslvr, "resolver should not be nil")
+				assert.Equal(t, test.expectedDNSSEC, rslvr.DNSSEC)
 			}
 		})
 	}
