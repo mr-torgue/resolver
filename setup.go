@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"os"
-	"slices"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -103,11 +102,19 @@ func resolverParse(c *caddy.Controller) (*resolver.Resolver, error) {
 			//udpsize = uint16(tmpsize)
 			case "clientType":
 				if !c.NextArg() {
-					return nil, c.Errf("udpsize not provided, format: udpsize \"[UINT]\"")
+					return nil, c.Errf("client type not provided, format: clientType \"[TYPE]\"")
 				}
 				clientType = c.Val()
-				if !slices.Contains([]string{"udp", "tcp", "dot", "doq", "doh"}, clientType) {
-					return nil, c.Errf("client type only supports udp, tcp, dot, doq, or doh")
+				allowedTypes := []string{"udp", "tcp", "dot", "doq"}
+				found := false
+				for _, t := range allowedTypes {
+					if t == clientType {
+						found = true
+						break
+					}
+				}
+				if !found {
+					return nil, c.Errf("client type only supports udp, tcp, dot, or doq")
 				}
 			case "nofallback":
 				fallback = false
