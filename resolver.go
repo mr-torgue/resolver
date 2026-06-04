@@ -6,14 +6,12 @@ package resolver
 import (
 	"context"
 	"errors"
-	"unsafe"
 
-	"github.com/coredns/coredns/plugin"
+	"github.com/mr-torgue/coredns/plugin"
 	//"github.com/coredns/coredns/plugin/metrics"
-	clog "github.com/coredns/coredns/plugin/pkg/log"
+	clog "github.com/mr-torgue/coredns/plugin/pkg/log"
 
-	"github.com/miekg/dns"
-	mydns "github.com/mr-torgue/dns"
+	"github.com/mr-torgue/dns"
 	"github.com/mr-torgue/resolver-lib"
 )
 
@@ -32,10 +30,9 @@ type Resolver struct {
 func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 
 	log.Debugf("Received query: %s\n", r.String())
-	myr := (*mydns.Msg)(unsafe.Pointer(r))
-	rsp := e.R.Exchange(context.Background(), myr)
+	rsp := e.R.Exchange(context.Background(), r)
 	if rsp != nil {
-		rmsg := (*dns.Msg)(unsafe.Pointer(rsp.Msg))
+		rmsg := rsp.Msg
 		if rmsg != nil {
 			log.Infof("Found response: %s\n", rmsg.String())
 			w.WriteMsg(rmsg)
