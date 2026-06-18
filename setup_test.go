@@ -30,29 +30,36 @@ func TestResolverParse(t *testing.T) {
 		expectedClientType string
 		expectedFallback   bool
 		expectedTLSVerify  bool
+		expectedPQCMode    bool
+		expectedUDPSize    uint16
 		//expectedErr			string
 
 	}{
 		{
-			name:           "should work with most basic setup",
-			input:          "resolver",
-			shouldErr:      false,
-			expectedDNSSEC: true,
+			name:            "should work with most basic setup",
+			input:           "resolver",
+			shouldErr:       false,
+			expectedDNSSEC:  true,
+			expectedPQCMode: false,
+			expectedUDPSize: 8192,
 		},
 		{
 			name: "should fail because of non-existent option",
 			input: `resolver {
 				no_reload
 			}`,
-			shouldErr: true,
+			expectedUDPSize: 8192,
+			shouldErr:       true,
 		},
 		{
 			name: "should with complex settings",
 			input: `resolver {
+				udpsize 1300
 				nodnssec
 			}`,
-			shouldErr:      false,
-			expectedDNSSEC: false,
+			expectedUDPSize: 1300,
+			shouldErr:       false,
+			expectedDNSSEC:  false,
 		},
 	}
 
@@ -68,6 +75,7 @@ func TestResolverParse(t *testing.T) {
 				assert.Nil(t, err, "did not expect an error")
 				assert.NotNil(t, rslvr, "resolver should not be nil")
 				assert.Equal(t, test.expectedDNSSEC, rslvr.DNSSEC)
+				assert.Equal(t, test.expectedUDPSize, rslvr.udpsize)
 			}
 		})
 	}

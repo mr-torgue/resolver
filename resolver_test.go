@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -231,7 +230,6 @@ func TestResolver(t *testing.T) {
 				qmsg.SetQuestion(dns.Fqdn(tt.qname), tt.qtype)
 				rcode, _ := x.ServeDNS(ctx, rec, &qmsg)
 				rmsg := rec.Msg
-				fmt.Printf("rmsg: %s\n", rmsg.String())
 
 				require.NotNil(t, rmsg, "response should not be nil")
 				assert.Equal(t, tt.rcode, rcode, "rcodes should match")
@@ -248,4 +246,91 @@ func TestResolver(t *testing.T) {
 			})
 		}
 	}
+}
+
+// tests if the AD bit is set and no DNSSEC results are returned
+func TestResolverAD(t *testing.T) {
+
+	ctx := context.TODO()
+	rec := dnstest.NewRecorder(&test.ResponseWriter{})
+	config := `resolver {
+		timeout "2s"
+		clientType "udp"
+	}
+	`
+	c := caddy.NewTestController("dns", config)
+	x, _ := resolverParse(c)
+	x.Next = test.ErrorHandler()
+
+	// test for DNSSEC enabled domain
+	var qmsg dns.Msg
+	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
+	//qmsg.SetEdns0(512, false)
+	rcode, err := x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg := rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.True(t, rmsg.AuthenticatedData)
+	sections := [][]dns.RR{rmsg.Answer, rmsg.Ns, rmsg.Extra}
+	for _, section := range sections {
+		for i := len(section) - 1; i >= 0; i-- {
+			assert.NotContains(t, []uint16{dns.TypeRRSIG, dns.TypeNSEC, dns.TypeDS, dns.TypeDNSKEY}, section[i].Header().Rrtype)
+		}
+	}
+
+	// test for DNSSEC enabled domain but with EDNS0 set (DO=false)
+	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
+	qmsg.SetEdns0(512, false)
+	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg = rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.True(t, rmsg.AuthenticatedData)
+	sections = [][]dns.RR{rmsg.Answer, rmsg.Ns, rmsg.Extra}
+	for _, section := range sections {
+		for i := len(section) - 1; i >= 0; i-- {
+			assert.NotContains(t, []uint16{dns.TypeRRSIG, dns.TypeNSEC, dns.TypeDS, dns.TypeDNSKEY}, section[i].Header().Rrtype)
+		}
+	}
+
+	// test for DNSSEC enabled domain but with EDNS0 set (DO=false)
+	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
+	qmsg.SetEdns0(4096, true)
+	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg = rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.True(t, rmsg.AuthenticatedData)
+
+	// test for non-DNSSEC domain
+	qmsg.SetQuestion(dns.Fqdn("cisco.com"), dns.TypeA)
+	//qmsg.SetEdns0(512, false)
+	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg = rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.False(t, rmsg.AuthenticatedData)
+}
+
+func TestResolverFallback(t *testing.T) {
+	ctx := context.TODO()
+	rec := dnstest.NewRecorder(&test.ResponseWriter{})
+	config := `resolver {
+		timeout "2s"
+		clientType "udp"
+	}
+	`
+	c := caddy.NewTestController("dns", config)
+	x, _ := resolverParse(c)
+	x.Next = test.ErrorHandler()
+
+	// test for DNSSEC enabled domain
+	var qmsg dns.Msg
+	qmsg.SetQuestion(dns.Fqdn("cisco.com"), dns.TypeTXT)
+	//qmsg.SetEdns0(512, false)
+	rcode, err := x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg := rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.True(t, rmsg.AuthenticatedData)
 }

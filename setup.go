@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/coredns/caddy"
@@ -43,16 +44,17 @@ func fileExists(s string) bool {
 
 // resolveParse parses the config file. Format:
 //
-//			resolver {
-//			   timeout [TimeString]
-//			   hints [Filename]
-//			   anchor [Filename]
-//			   udpsize: [Uint]
-//			   clientType [String]
-//		       nofallback
-//	        nodnssec
-//	        notlsverify
-//			}
+//		resolver {
+//			timeout [TimeString]
+//			hints [Filename]
+//			anchor [Filename]
+//			udpsize: [Uint]
+//			clientType [String]
+//			nofallback
+//		    nodnssec
+//		    notlsverify
+//	        pqcmode
+//		}
 //
 // TODO(mr-torgue): tighter checks
 func resolverParse(c *caddy.Controller) (*Resolver, error) {
@@ -60,15 +62,16 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	var R = new(Resolver)
 	// set default values
 	var (
-		timeout = "1s"
-		hints   = "named.root"
-		anchor  = "root-anchors.xml"
-		//udpsize    uint16 = 1232
+		timeout    = "1s"
+		hints      = "named.root"
+		anchor     = "root-anchors.xml"
 		clientType = "udp"
 		fallback   = true
 		tlsverify  = true
+		pqcmode    = false
 	)
 	R.DNSSEC = true
+	R.udpsize = 8192
 
 	for c.Next() {
 		for c.NextBlock() {
@@ -98,14 +101,14 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 					return nil, c.Errf("file %s does not exist", anchor)
 				}
 			case "udpsize":
-				//if !c.NextArg() {
-			//		return nil, c.Errf("udpsize not provided, format: udpsize \"[UINT]\"")
-			//}
-			//tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
-			//if err != nil {
-			//	return nil, c.Errf("could not parse unsigned integer %s for udpsize: %s", c.Val(), err)
-			//}
-			//udpsize = uint16(tmpsize)
+				if !c.NextArg() {
+					return nil, c.Errf("udpsize not provided, format: udpsize \"[UINT]\"")
+				}
+				tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
+				if err != nil {
+					return nil, c.Errf("could not parse unsigned integer %s for udpsize: %s", c.Val(), err)
+				}
+				R.udpsize = uint16(tmpsize)
 			case "clientType":
 				if !c.NextArg() {
 					return nil, c.Errf("client type not provided, format: clientType \"[TYPE]\"")
@@ -128,6 +131,8 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 				R.DNSSEC = false
 			case "notlsverify":
 				tlsverify = false
+			case "pqcmode":
+				pqcmode = true
 			default:
 				return nil, c.Errf("unknown property '%s'", c.Val())
 			}
@@ -138,7 +143,13 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
 	// use the same timeout for all clients, not great but should work
-	rslvr := resolver.NewResolver(resolver.ConfigBuilder(resolver.WithClient(clientType, fallback), resolver.WithCustomRoot(hints, anchor), resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration), resolver.WithTLSVerification(tlsverify)))
+	rslvr := resolver.NewResolver(resolver.ConfigBuilder(
+		resolver.WithClient(clientType, fallback),
+		resolver.WithCustomRoot(hints, anchor),
+		resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
+		resolver.WithTLSVerification(tlsverify),
+		resolver.WithPQCMode(pqcmode),
+	))
 	// return error if we could not create the resolver
 	if rslvr == nil {
 		return nil, c.Errf("could not create resolver")
