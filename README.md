@@ -2,12 +2,16 @@
 
 ## Name
 
-*resolver* - prints "resolver" after a query is handled.
+*resolver* - fully iterative DNSSEC-enabled resolver based on [resolver-lib](https://github.com/mr-torgue/resolver-lib) with support for post quantum cryptography.
 
 ## Description
 
-The example plugin prints "example" on every query that got handled by the server. It serves as
-documentation for writing CoreDNS plugins.
+CoreDNS supported resolving trough bthe forward plugin but did not have a dedicated iterative resolver.
+This resolver plugin adds that functionality.
+It supports:
+1. DNSSEC
+2. PQC algorithms
+It does not have a cache, which we will leave for future releases.
 
 ## Compilation
 
@@ -44,11 +48,7 @@ example
 
 ## Metrics
 
-If monitoring is enabled (via the *prometheus* directive) the following metric is exported:
-
-* `coredns_example_request_count_total{server}` - query count to the *example* plugin.
-
-The `server` label indicated which server handled the request, see the *metrics* plugin for details.
+TBD
 
 ## Ready
 
@@ -56,24 +56,7 @@ This plugin reports readiness to the ready plugin. It will be immediately ready.
 
 ## Examples
 
-In this configuration, we forward all queries to 9.9.9.9 and print "example" whenever we receive
-a query.
-
-~~~ corefile
-. {
-  forward . 9.9.9.9
-  example
-}
-~~~
-
-Or without any external connectivity:
-
-~~~ corefile
-. {
-  whoami
-  example
-}
-~~~
+TBD
 
 ## Also See
 
