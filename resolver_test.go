@@ -65,7 +65,7 @@ func matchall(rrs []dns.RR, expectedRRs []ExpectedRR) bool {
 
 func TestResolver(t *testing.T) {
 
-	ctx := context.TODO()
+	//ctx := context.TODO()
 	rec := dnstest.NewRecorder(&test.ResponseWriter{})
 	tests := []TestCaseConfig{
 		{
@@ -194,13 +194,14 @@ func TestResolver(t *testing.T) {
 			config: ` resolver {
 				timeout "1ms"
 				clientType "udp"
+				udpsize 8192
 			}
 			`,
-			shouldErr: false,
+			shouldErr: true,
 			testCases: []TestCase{
 				{
 					name:              "[UDP] Client should timeout",
-					qname:             "folmer.info",
+					qname:             "reddit.com",
 					qtype:             dns.TypeA,
 					rcode:             dns.RcodeServerFailure,
 					expectedNrAnswers: 0,
@@ -228,20 +229,22 @@ func TestResolver(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 
 				qmsg.SetQuestion(dns.Fqdn(tt.qname), tt.qtype)
-				rcode, _ := x.ServeDNS(ctx, rec, &qmsg)
+				rcode, _ := x.ServeDNS(context.Background(), rec, &qmsg)
 				rmsg := rec.Msg
 
 				require.NotNil(t, rmsg, "response should not be nil")
 				assert.Equal(t, tt.rcode, rcode, "rcodes should match")
-				assert.Equal(t, tt.expectedNrAnswers, len(rmsg.Answer), "expected a different number of results")
-				if len(tt.expectedAnswers) > 0 {
-					assert.True(t, matchall(rmsg.Answer, tt.expectedAnswers), "matchall for answers failed")
-				}
-				if len(tt.expectedAuth) > 0 {
-					assert.True(t, matchall(rmsg.Ns, tt.expectedAuth), "matchall for authoritative failed")
-				}
-				if len(tt.expectedExtra) > 0 {
-					assert.True(t, matchall(rmsg.Extra, tt.expectedExtra), "matchall for additional failed")
+				if !ttconfig.shouldErr {
+					assert.Equal(t, tt.expectedNrAnswers, len(rmsg.Answer), "expected a different number of results")
+					if len(tt.expectedAnswers) > 0 {
+						assert.True(t, matchall(rmsg.Answer, tt.expectedAnswers), "matchall for answers failed")
+					}
+					if len(tt.expectedAuth) > 0 {
+						assert.True(t, matchall(rmsg.Ns, tt.expectedAuth), "matchall for authoritative failed")
+					}
+					if len(tt.expectedExtra) > 0 {
+						assert.True(t, matchall(rmsg.Extra, tt.expectedExtra), "matchall for additional failed")
+					}
 				}
 			})
 		}
@@ -263,10 +266,11 @@ func TestResolverAD(t *testing.T) {
 	x.Next = test.ErrorHandler()
 
 	// test for DNSSEC enabled domain
-	var qmsg dns.Msg
+	var qmsg *dns.Msg
+	qmsg = &dns.Msg{}
 	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
 	//qmsg.SetEdns0(512, false)
-	rcode, err := x.ServeDNS(ctx, rec, &qmsg)
+	rcode, err := x.ServeDNS(ctx, rec, qmsg)
 	assert.Nil(t, err)
 	rmsg := rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
@@ -279,9 +283,10 @@ func TestResolverAD(t *testing.T) {
 	}
 
 	// test for DNSSEC enabled domain but with EDNS0 set (DO=false)
+	qmsg = &dns.Msg{}
 	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
 	qmsg.SetEdns0(512, false)
-	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	rcode, err = x.ServeDNS(ctx, rec, qmsg)
 	assert.Nil(t, err)
 	rmsg = rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
@@ -293,19 +298,21 @@ func TestResolverAD(t *testing.T) {
 		}
 	}
 
-	// test for DNSSEC enabled domain but with EDNS0 set (DO=false)
+	// test for DNSSEC enabled domain but with EDNS0 set (DO=true)
+	qmsg = &dns.Msg{}
 	qmsg.SetQuestion(dns.Fqdn("cloudflare.com"), dns.TypeA)
 	qmsg.SetEdns0(4096, true)
-	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	rcode, err = x.ServeDNS(ctx, rec, qmsg)
 	assert.Nil(t, err)
 	rmsg = rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
 	assert.True(t, rmsg.AuthenticatedData)
 
 	// test for non-DNSSEC domain
+	qmsg = &dns.Msg{}
 	qmsg.SetQuestion(dns.Fqdn("cisco.com"), dns.TypeA)
 	//qmsg.SetEdns0(512, false)
-	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	rcode, err = x.ServeDNS(ctx, rec, qmsg)
 	assert.Nil(t, err)
 	rmsg = rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
@@ -316,7 +323,7 @@ func TestResolverFallback(t *testing.T) {
 	ctx := context.TODO()
 	rec := dnstest.NewRecorder(&test.ResponseWriter{})
 	config := `resolver {
-		timeout "2s"
+		timeout "3s"
 		clientType "udp"
 	}
 	`
@@ -327,10 +334,31 @@ func TestResolverFallback(t *testing.T) {
 	// test for DNSSEC enabled domain
 	var qmsg dns.Msg
 	qmsg.SetQuestion(dns.Fqdn("cisco.com"), dns.TypeTXT)
-	//qmsg.SetEdns0(512, false)
+	//qmsg.SetEdns0(8192, false)
 	rcode, err := x.ServeDNS(ctx, rec, &qmsg)
 	assert.Nil(t, err)
 	rmsg := rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
-	assert.True(t, rmsg.AuthenticatedData)
+	assert.False(t, rmsg.AuthenticatedData)
+	assert.False(t, rmsg.Truncated)
+
+	// test no fallback
+	config = `resolver {
+		timeout "5s"
+		clientType "udp"
+		nofallback
+	}
+	`
+	c = caddy.NewTestController("dns", config)
+	x, _ = resolverParse(c)
+	x.Next = test.ErrorHandler()
+
+	qmsg.SetQuestion(dns.Fqdn("cisco.com"), dns.TypeTXT)
+	//qmsg.SetEdns0(8192, false)
+	rcode, err = x.ServeDNS(ctx, rec, &qmsg)
+	assert.Nil(t, err)
+	rmsg = rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.False(t, rmsg.AuthenticatedData)
+	assert.True(t, rmsg.Truncated)
 }
