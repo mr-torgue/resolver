@@ -41,14 +41,14 @@ func TestResolverParse(t *testing.T) {
 			shouldErr:       false,
 			expectedDNSSEC:  true,
 			expectedPQCMode: false,
-			expectedUDPSize: 8192,
+			expectedUDPSize: 1232,
 		},
 		{
 			name: "should fail because of non-existent option",
 			input: `resolver {
 				no_reload
 			}`,
-			expectedUDPSize: 8192,
+			expectedUDPSize: 1232,
 			shouldErr:       true,
 		},
 		{
@@ -79,4 +79,16 @@ func TestResolverParse(t *testing.T) {
 			}
 		})
 	}
+
+	// test no cache
+	/*
+		configStr := `resolver {
+					udpsize 1300
+					nodnssec
+					nocache
+				}`
+		c := caddy.NewTestController("dns", configStr)
+		rslvr, err := resolverParse(c)
+	*/
+
 }

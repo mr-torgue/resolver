@@ -112,7 +112,7 @@ func TestResolver(t *testing.T) {
 					qname:             "www.github.com",
 					qtype:             dns.TypeTXT,
 					rcode:             dns.RcodeSuccess,
-					expectedNrAnswers: 21,
+					expectedNrAnswers: 22,
 					expectedAnswers: []ExpectedRR{
 						{dns.TypeTXT, "stripe-verification=f88ef17321660a01bab1660454192e014defa29ba7b8de9633c69d6b4912217f"},
 						{dns.TypeTXT, "docusign=087098e3-3d46-47b7-9b4e-8a23028154cd"},
@@ -133,6 +133,7 @@ func TestResolver(t *testing.T) {
 						{dns.TypeTXT, "MS=ms44452932"},
 						{dns.TypeTXT, "google-site-verification=UTM-3akMgubp6tQtgEuAkYNYLyYAvpTnnSrDMWoDR3o"},
 						{dns.TypeTXT, "MS=6BF03E6AF5CB689E315FB6199603BABF2C88D805"},
+						{dns.TypeTXT, "anthropic-domain-verification-4az7qn=if8YWuRRqwLycGJDooumzHtxm"},
 						{dns.TypeTXT, "v=spf1"},
 						{dns.TypeCNAME, "github.com."},
 					},
@@ -347,6 +348,7 @@ func TestResolverFallback(t *testing.T) {
 		timeout "5s"
 		clientType "udp"
 		nofallback
+		nodnssec
 	}
 	`
 	c = caddy.NewTestController("dns", config)

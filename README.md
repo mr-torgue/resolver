@@ -43,7 +43,21 @@ make
 ## Syntax
 
 ~~~ txt
-example
+resolver {
+	timeout [TimeString] (default "1s")
+	hints [Filename]     (default "named.root")
+	anchor [Filename]    (default "root-anchors.xml")
+	udpsize: [Uint]      (default 1232)
+    dnsport: [Uint]      (default 53)
+    doqport: [Uint]      (default 853)
+	dotport: [Uint]      (default 8853)
+    clientType [String]  (default "udp")
+	nofallback           (default false)
+	nodnssec             (default false)
+	notlsverify          (default false)
+	nocache              (default false)
+	pqcmode              (default true)
+}
 ~~~
 
 ## Metrics

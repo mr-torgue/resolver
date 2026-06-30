@@ -44,17 +44,21 @@ func fileExists(s string) bool {
 
 // resolveParse parses the config file. Format:
 //
-//		resolver {
-//			timeout [TimeString]
-//			hints [Filename]
-//			anchor [Filename]
-//			udpsize: [Uint]
-//			clientType [String]
-//			nofallback
-//		    nodnssec
-//		    notlsverify
-//	        pqcmode
-//		}
+//	resolver {
+//	  timeout [TimeString] (default "1s")
+//	  hints [Filename]     (default "named.root")
+//	  anchor [Filename]    (default "root-anchors.xml")
+//	  udpsize: [Uint]      (default 1232)
+//	  dnsport: [Uint]      (default 53)
+//	  doqport: [Uint]      (default 853)
+//	  dotport: [Uint]      (default 8853)
+//	  clientType [String]  (default "udp")
+//	  nofallback           (default false)
+//	  nodnssec             (default false)
+//	  notlsverify          (default false)
+//	  nocache              (default false)
+//	  pqcmode              (default true)
+//	}
 //
 // TODO(mr-torgue): tighter checks
 func resolverParse(c *caddy.Controller) (*Resolver, error) {
@@ -62,16 +66,20 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	var R = new(Resolver)
 	// set default values
 	var (
-		timeout    = "1s"
-		hints      = "named.root"
-		anchor     = "root-anchors.xml"
-		clientType = "udp"
-		fallback   = true
-		tlsverify  = true
-		pqcmode    = false
+		timeout           = "1s"
+		hints             = "named.root"
+		anchor            = "root-anchors.xml"
+		dnsPort    uint16 = 53
+		doqPort    uint16 = 853
+		dotPort    uint16 = 8853
+		clientType        = "udp"
+		fallback          = true
+		tlsverify         = true
+		cache             = true
+		pqcmode           = false
 	)
 	R.DNSSEC = true
-	R.udpsize = 8192
+	R.udpsize = 1232
 
 	for c.Next() {
 		for c.NextBlock() {
@@ -109,6 +117,33 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 					return nil, c.Errf("could not parse unsigned integer %s for udpsize: %s", c.Val(), err)
 				}
 				R.udpsize = uint16(tmpsize)
+			case "dnsport":
+				if !c.NextArg() {
+					return nil, c.Errf("dnsport not provided, format: dnsport \"[UINT]\"")
+				}
+				tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
+				if err != nil {
+					return nil, c.Errf("could not parse unsigned integer %s for dnsport: %s", c.Val(), err)
+				}
+				dnsPort = uint16(tmpsize)
+			case "doqport":
+				if !c.NextArg() {
+					return nil, c.Errf("doqport not provided, format: doqport \"[UINT]\"")
+				}
+				tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
+				if err != nil {
+					return nil, c.Errf("could not parse unsigned integer %s for doqport: %s", c.Val(), err)
+				}
+				doqPort = uint16(tmpsize)
+			case "dotport":
+				if !c.NextArg() {
+					return nil, c.Errf("dotport not provided, format: dotport \"[UINT]\"")
+				}
+				tmpsize, err := strconv.ParseUint(c.Val(), 10, 16)
+				if err != nil {
+					return nil, c.Errf("could not parse unsigned integer %s for dotport: %s", c.Val(), err)
+				}
+				dotPort = uint16(tmpsize)
 			case "clientType":
 				if !c.NextArg() {
 					return nil, c.Errf("client type not provided, format: clientType \"[TYPE]\"")
@@ -131,6 +166,8 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 				R.DNSSEC = false
 			case "notlsverify":
 				tlsverify = false
+			case "nocache":
+				cache = false
 			case "pqcmode":
 				pqcmode = true
 			default:
@@ -143,13 +180,33 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
 	// use the same timeout for all clients, not great but should work
-	rslvr := resolver.NewResolver(resolver.ConfigBuilder(
-		resolver.WithClient(clientType, fallback),
-		resolver.WithCustomRoot(hints, anchor),
-		resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
-		resolver.WithTLSVerification(tlsverify),
-		resolver.WithPQCMode(pqcmode),
-	))
+	var rslvr *resolver.Resolver
+	if cache {
+		rslvr = resolver.NewResolver(resolver.ConfigBuilder(
+			resolver.WithClient(clientType, fallback),
+			resolver.WithCustomRoot(hints, anchor),
+			resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
+			resolver.WithTLSVerification(tlsverify),
+			resolver.WithPQCMode(pqcmode),
+			resolver.WithUDPSize(R.udpsize),
+			resolver.WithDNSPort(int(dnsPort)),
+			resolver.WithDoQPort(int(doqPort)),
+			resolver.WithDoTPort(int(dotPort)),
+			resolver.WithCache(2000),
+		))
+	} else {
+		rslvr = resolver.NewResolver(resolver.ConfigBuilder(
+			resolver.WithClient(clientType, fallback),
+			resolver.WithCustomRoot(hints, anchor),
+			resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
+			resolver.WithTLSVerification(tlsverify),
+			resolver.WithPQCMode(pqcmode),
+			resolver.WithUDPSize(R.udpsize),
+			resolver.WithDNSPort(int(dnsPort)),
+			resolver.WithDoQPort(int(doqPort)),
+			resolver.WithDoTPort(int(dotPort)),
+		))
+	}
 	// return error if we could not create the resolver
 	if rslvr == nil {
 		return nil, c.Errf("could not create resolver")

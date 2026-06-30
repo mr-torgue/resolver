@@ -37,16 +37,15 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	qmsg := r.Copy()
 
 	removeDNSSEC := false
-	var edns0 *dns.OPT
-	if !e.DNSSEC {
-		qmsg.SetEdns0(e.udpsize, false)
-	} else {
-		// if do is not set, still enable it for the query so it still gets validated.
-		edns0 = qmsg.IsEdns0()
-		if edns0 == nil {
+	edns0 := qmsg.IsEdns0()
+	if !e.DNSSEC && edns0 != nil { // DNSSEC disabled but EDNS not nil --> make sure to remove DO flag
+		edns0.SetDo(false)
+	}
+	if e.DNSSEC {
+		if edns0 == nil { // no EDNS --> remove DNSSEC records but do verify
 			qmsg.SetEdns0(e.udpsize, true)
 			removeDNSSEC = true
-		} else if !edns0.Do() {
+		} else if !edns0.Do() { // EDNS provided but Do is set to false --> remove DNSSEC records but do verify
 			edns0.SetDo(true)
 			removeDNSSEC = true
 		}
