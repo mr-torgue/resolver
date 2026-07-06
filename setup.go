@@ -53,11 +53,12 @@ func fileExists(s string) bool {
 //	  doqport: [Uint]      (default 853)
 //	  dotport: [Uint]      (default 8853)
 //	  clientType [String]  (default "udp")
-//	  nofallback           (default false)
-//	  nodnssec             (default false)
-//	  notlsverify          (default false)
-//	  nocache              (default false)
-//	  pqcmode              (default true)
+//	  nofallback
+//	  nodnssec
+//	  notlsverify
+//	  nocache
+//	  notlscache
+//	  nopqcmode
 //	}
 //
 // TODO(mr-torgue): tighter checks
@@ -66,17 +67,18 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	var R = new(Resolver)
 	// set default values
 	var (
-		timeout           = "1s"
-		hints             = "named.root"
-		anchor            = "root-anchors.xml"
-		dnsPort    uint16 = 53
-		doqPort    uint16 = 853
-		dotPort    uint16 = 8853
-		clientType        = "udp"
-		fallback          = true
-		tlsverify         = true
-		cache             = true
-		pqcmode           = false
+		timeout             = "1s"
+		hints               = "named.root"
+		anchor              = "root-anchors.xml"
+		dnsPort      uint16 = 53
+		doqPort      uint16 = 853
+		dotPort      uint16 = 8853
+		clientType          = "udp"
+		fallback            = true
+		tlsverify           = true
+		dnsCacheSize        = resolver.DefaultCacheSize
+		tlsCacheSize        = resolver.DefaultTLSCacheSize
+		pqcmode             = true
 	)
 	R.DNSSEC = true
 	R.udpsize = 1232
@@ -167,9 +169,11 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 			case "notlsverify":
 				tlsverify = false
 			case "nocache":
-				cache = false
-			case "pqcmode":
-				pqcmode = true
+				dnsCacheSize = 0
+			case "notlscache":
+				tlsCacheSize = 0
+			case "nopqcmode":
+				pqcmode = false
 			default:
 				return nil, c.Errf("unknown property '%s'", c.Val())
 			}
@@ -179,34 +183,19 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	if err != nil {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
-	// use the same timeout for all clients, not great but should work
-	var rslvr *resolver.Resolver
-	if cache {
-		rslvr = resolver.NewResolver(resolver.ConfigBuilder(
-			resolver.WithClient(clientType, fallback),
-			resolver.WithCustomRoot(hints, anchor),
-			resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
-			resolver.WithTLSVerification(tlsverify),
-			resolver.WithPQCMode(pqcmode),
-			resolver.WithUDPSize(R.udpsize),
-			resolver.WithDNSPort(int(dnsPort)),
-			resolver.WithDoQPort(int(doqPort)),
-			resolver.WithDoTPort(int(dotPort)),
-			resolver.WithCache(2000),
-		))
-	} else {
-		rslvr = resolver.NewResolver(resolver.ConfigBuilder(
-			resolver.WithClient(clientType, fallback),
-			resolver.WithCustomRoot(hints, anchor),
-			resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
-			resolver.WithTLSVerification(tlsverify),
-			resolver.WithPQCMode(pqcmode),
-			resolver.WithUDPSize(R.udpsize),
-			resolver.WithDNSPort(int(dnsPort)),
-			resolver.WithDoQPort(int(doqPort)),
-			resolver.WithDoTPort(int(dotPort)),
-		))
-	}
+	rslvr := resolver.NewResolver(resolver.ConfigBuilder(
+		resolver.WithClient(clientType, fallback),
+		resolver.WithCustomRoot(hints, anchor),
+		resolver.WithTimeouts(timeoutDuration, timeoutDuration, timeoutDuration, timeoutDuration),
+		resolver.WithTLSVerification(tlsverify),
+		resolver.WithPQCMode(pqcmode),
+		resolver.WithUDPSize(R.udpsize),
+		resolver.WithDNSPort(int(dnsPort)),
+		resolver.WithDoQPort(int(doqPort)),
+		resolver.WithDoTPort(int(dotPort)),
+		resolver.WithCache(dnsCacheSize),
+		resolver.WithTLSCache(tlsCacheSize),
+	))
 	// return error if we could not create the resolver
 	if rslvr == nil {
 		return nil, c.Errf("could not create resolver")

@@ -1,10 +1,13 @@
 package resolver
 
 import (
+	"reflect"
 	"testing"
 	"time"
+	"unsafe"
 
 	"github.com/coredns/caddy"
+	"github.com/mr-torgue/resolver-lib"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,6 +34,7 @@ func TestResolverParse(t *testing.T) {
 		expectedFallback   bool
 		expectedTLSVerify  bool
 		expectedPQCMode    bool
+		expectedCache      bool
 		expectedUDPSize    uint16
 		//expectedErr			string
 
@@ -41,6 +45,7 @@ func TestResolverParse(t *testing.T) {
 			shouldErr:       false,
 			expectedDNSSEC:  true,
 			expectedPQCMode: false,
+			expectedCache:   true,
 			expectedUDPSize: 1232,
 		},
 		{
@@ -49,6 +54,7 @@ func TestResolverParse(t *testing.T) {
 				no_reload
 			}`,
 			expectedUDPSize: 1232,
+			expectedCache:   true,
 			shouldErr:       true,
 		},
 		{
@@ -59,7 +65,20 @@ func TestResolverParse(t *testing.T) {
 			}`,
 			expectedUDPSize: 1300,
 			shouldErr:       false,
+			expectedCache:   true,
 			expectedDNSSEC:  false,
+		},
+		{
+			name: "should disable cache",
+			input: `resolver {
+				udpsize 1300
+				notlscache
+				nocache
+			}`,
+			expectedUDPSize: 1300,
+			shouldErr:       false,
+			expectedCache:   false,
+			expectedDNSSEC:  true,
 		},
 	}
 
@@ -76,19 +95,22 @@ func TestResolverParse(t *testing.T) {
 				assert.NotNil(t, rslvr, "resolver should not be nil")
 				assert.Equal(t, test.expectedDNSSEC, rslvr.DNSSEC)
 				assert.Equal(t, test.expectedUDPSize, rslvr.udpsize)
+				// CAREFUL: MIGHT BREAK!
+				v := reflect.ValueOf(rslvr.R).Elem()
+				configField := v.FieldByName("config")
+				configPtr := *(*(*resolver.Config))(unsafe.Pointer(configField.UnsafeAddr()))
+				cv := reflect.ValueOf(configPtr).Elem()
+				tlsCache := cv.FieldByName("tlsCache")
+				dnsCache := cv.FieldByName("cache")
+				assert.True(t, tlsCache.IsValid())
+				if test.expectedCache {
+					assert.False(t, tlsCache.IsNil())
+					assert.False(t, dnsCache.IsNil())
+				} else {
+					assert.True(t, tlsCache.IsNil())
+					assert.True(t, dnsCache.IsNil())
+				}
 			}
 		})
 	}
-
-	// test no cache
-	/*
-		configStr := `resolver {
-					udpsize 1300
-					nodnssec
-					nocache
-				}`
-		c := caddy.NewTestController("dns", configStr)
-		rslvr, err := resolverParse(c)
-	*/
-
 }
