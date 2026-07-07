@@ -80,6 +80,22 @@ func TestResolverParse(t *testing.T) {
 			expectedCache:   false,
 			expectedDNSSEC:  true,
 		},
+		{
+			name: "should disable cache",
+			input: `resolver {
+				hints "named.root"
+				anchor "root-anchors.xml"
+				clientType "doq"
+				nofallback
+				notlsverify
+				nocache
+				notlscache
+			}`,
+			expectedUDPSize: 1232,
+			shouldErr:       false,
+			expectedCache:   false,
+			expectedDNSSEC:  true,
+		},
 	}
 
 	for _, test := range tests {
