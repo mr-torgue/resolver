@@ -33,22 +33,13 @@ type Resolver struct {
 func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	log.Debugf("Received query: %s\n", r.String())
 
-	// not incredibly efficient, but needed because we might make some changes to the query
-	qmsg := r.Copy()
-
-	removeDNSSEC := false
-	edns0 := qmsg.IsEdns0()
-	if !e.DNSSEC && edns0 != nil { // DNSSEC disabled but EDNS not nil --> make sure to remove DO flag
-		edns0.SetDo(false)
-	}
+	//create a new question
+	qmsg := new(dns.Msg)
+	qmsg.SetQuestion(dns.CanonicalName(r.Question[0].Name), r.Question[0].Qtype)
 	if e.DNSSEC {
-		if edns0 == nil { // no EDNS --> remove DNSSEC records but do verify
-			qmsg.SetEdns0(e.udpsize, true)
-			removeDNSSEC = true
-		} else if !edns0.Do() { // EDNS provided but Do is set to false --> remove DNSSEC records but do verify
-			edns0.SetDo(true)
-			removeDNSSEC = true
-		}
+		qmsg.SetEdns0(e.udpsize, true)
+	} else {
+		qmsg.SetEdns0(e.udpsize, false)
 	}
 
 	rsp := e.R.Exchange(context.Background(), qmsg)
@@ -62,10 +53,11 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 	if rmsg == nil {
 		return dns.RcodeServerFailure, errors.New("resolver failed: no message in response")
 	}
-	rmsg.Id = qmsg.Id // in case QUIC or TLS is used
+	rmsg.Id = r.Id // in case QUIC or TLS is used
 
 	// remove DNSSEC related data from the response if do bit was not set
-	if removeDNSSEC {
+	edns0 := r.IsEdns0()
+	if edns0 == nil || !edns0.Do() {
 		// Helper to filter a slice in-place
 		filterDNS := func(slice []dns.RR) []dns.RR {
 			n := 0

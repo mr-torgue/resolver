@@ -57,7 +57,8 @@ resolver {
 	notlsverify          
 	nocache     
 	notlscache         
-	nopqcmode             
+	nopqcmode            
+	log 
 }
 ~~~
 

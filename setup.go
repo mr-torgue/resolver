@@ -60,6 +60,7 @@ func fileExists(s string) bool {
 //	  nocache
 //	  notlscache
 //	  nopqcmode
+//	  log
 //	}
 //
 // TODO(mr-torgue): tighter checks
@@ -80,6 +81,7 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 		dnsCacheSize        = resolver.DefaultCacheSize
 		tlsCacheSize        = resolver.DefaultTLSCacheSize
 		pqcmode             = true
+		logging             = false
 	)
 	R.DNSSEC = true
 	R.udpsize = 1232
@@ -175,6 +177,8 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 				tlsCacheSize = 0
 			case "nopqcmode":
 				pqcmode = false
+			case "log":
+				logging = true
 			default:
 				return nil, c.Errf("unknown property '%s'", c.Val())
 			}
@@ -184,8 +188,10 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	if err != nil {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
-	var logr = clog.NewWithPlugin("resolver-lib")
-	resolver.SetLogger(logr)
+	if logging {
+		var logr = clog.NewWithPlugin("resolver-lib")
+		resolver.SetLogger(logr)
+	}
 	rslvr := resolver.NewResolver(resolver.ConfigBuilder(
 		resolver.WithClient(clientType, fallback),
 		resolver.WithCustomRoot(hints, anchor),
