@@ -1,4 +1,4 @@
-module resolver
+module github.com/mr-torgue/resolver
 
 go 1.26.2
 
