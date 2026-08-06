@@ -5,8 +5,8 @@ go 1.26.2
 require (
 	github.com/coredns/caddy v1.1.4
 	github.com/mr-torgue/coredns v0.0.2
-	github.com/mr-torgue/dns v1.1.4
-	github.com/mr-torgue/resolver-lib v1.0.2
+	github.com/mr-torgue/dns v1.1.5
+	github.com/mr-torgue/resolver-lib v1.0.3
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 )
@@ -23,7 +23,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
-	github.com/mr-torgue/go-openssl v1.0.1 // indirect
+	github.com/mr-torgue/go-openssl v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pires/go-proxyproto v0.12.0 // indirect
