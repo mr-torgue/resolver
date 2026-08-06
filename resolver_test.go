@@ -78,13 +78,14 @@ func TestResolver(t *testing.T) {
 			shouldErr: false,
 			testCases: []TestCase{
 				{
-					name:              "[UDP] Client should return A record of folmer.info",
-					qname:             "folmer.info",
+					name:              "[UDP] Client should return A record of example.com",
+					qname:             "example.com",
 					qtype:             dns.TypeA,
 					rcode:             dns.RcodeSuccess,
-					expectedNrAnswers: 1,
+					expectedNrAnswers: 2,
 					expectedAnswers: []ExpectedRR{
-						{dns.TypeA, "65.109.0.142"},
+						{dns.TypeA, "104.20.23.154"},
+						{dns.TypeA, "172.66.147.243"},
 					},
 					expectedNrAuth: 0,
 					expectedAuth:   []ExpectedRR{},
@@ -112,7 +113,7 @@ func TestResolver(t *testing.T) {
 					qname:             "www.github.com",
 					qtype:             dns.TypeTXT,
 					rcode:             dns.RcodeSuccess,
-					expectedNrAnswers: 22,
+					expectedNrAnswers: 23,
 					expectedAnswers: []ExpectedRR{
 						{dns.TypeTXT, "stripe-verification=f88ef17321660a01bab1660454192e014defa29ba7b8de9633c69d6b4912217f"},
 						{dns.TypeTXT, "docusign=087098e3-3d46-47b7-9b4e-8a23028154cd"},
@@ -134,6 +135,7 @@ func TestResolver(t *testing.T) {
 						{dns.TypeTXT, "google-site-verification=UTM-3akMgubp6tQtgEuAkYNYLyYAvpTnnSrDMWoDR3o"},
 						{dns.TypeTXT, "MS=6BF03E6AF5CB689E315FB6199603BABF2C88D805"},
 						{dns.TypeTXT, "anthropic-domain-verification-4az7qn=if8YWuRRqwLycGJDooumzHtxm"},
+						{dns.TypeTXT, "serval-domain-verification-ydryhj=qbkiEakpwEpTvHh5fIiCqtaue"},
 						{dns.TypeTXT, "v=spf1"},
 						{dns.TypeCNAME, "github.com."},
 					},

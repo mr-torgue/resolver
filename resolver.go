@@ -101,11 +101,6 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		}
 	}
 
-	// fix issue where TC flag is set incorrectly
-	if rmsg.Len() <= int(e.udpsize) {
-		rmsg.Truncated = false
-	}
-
 	log.Debugf("Found response for query %s %s\n", rmsg.Question[0].Name, dns.TypeToString[rmsg.Question[0].Qtype])
 
 	w.WriteMsg(rmsg)
