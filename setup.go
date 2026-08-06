@@ -8,6 +8,7 @@ import (
 	"github.com/coredns/caddy"
 	"github.com/mr-torgue/coredns/core/dnsserver"
 	"github.com/mr-torgue/coredns/plugin"
+	clog "github.com/mr-torgue/coredns/plugin/pkg/log"
 	"github.com/mr-torgue/resolver-lib"
 )
 
@@ -183,6 +184,8 @@ func resolverParse(c *caddy.Controller) (*Resolver, error) {
 	if err != nil {
 		return nil, c.Errf("invalid duration: %s", timeout)
 	}
+	var logr = clog.NewWithPlugin("resolver-lib")
+	resolver.SetLogger(logr)
 	rslvr := resolver.NewResolver(resolver.ConfigBuilder(
 		resolver.WithClient(clientType, fallback),
 		resolver.WithCustomRoot(hints, anchor),

@@ -320,6 +320,17 @@ func TestResolverAD(t *testing.T) {
 	rmsg = rec.Msg
 	assert.Equal(t, dns.RcodeSuccess, rcode)
 	assert.False(t, rmsg.AuthenticatedData)
+
+	// test case
+	qmsg = &dns.Msg{}
+	qmsg.SetQuestion("Sidn.NL.", dns.TypeA)
+	qmsg.Question[0].Name = "SidN.nl."
+	qmsg.SetEdns0(4096, true)
+	rcode, err = x.ServeDNS(ctx, rec, qmsg)
+	assert.Nil(t, err)
+	rmsg = rec.Msg
+	assert.Equal(t, dns.RcodeSuccess, rcode)
+	assert.True(t, rmsg.AuthenticatedData)
 }
 
 func TestResolverFallback(t *testing.T) {
