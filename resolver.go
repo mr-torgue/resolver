@@ -54,6 +54,9 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		return dns.RcodeServerFailure, errors.New("resolver failed: no message in response")
 	}
 	rmsg.Id = r.Id // in case QUIC or TLS is used
+	if len(rmsg.Question) > 0 {
+		rmsg.Question = []dns.Question{rmsg.Question[0]}
+	}
 
 	// remove DNSSEC related data from the response if do bit was not set
 	edns0 := r.IsEdns0()
