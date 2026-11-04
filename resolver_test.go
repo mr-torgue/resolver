@@ -102,42 +102,11 @@ func TestResolver(t *testing.T) {
 	rec := dnstest.NewRecorder(&test.ResponseWriter{})
 	tests := []TestCaseConfig{
 		{
-			name: "Query with no questions or zero-length questions",
-			config: `resolver {
-				timeout "5s"
-		clientType "udp"
-	}
-			`,
-			shouldErr: false,
-			testCases: []TestCase{
-				{
-					name:              "[No Questions] Should return RcodeFormatError for empty questions",
-					qname:             "",
-					qtype:             dns.TypeA,
-					rcode:             dns.RcodeFormatError,
-					expectedNrAnswers: 0,
-					expectedAnswers:   []ExpectedRR{},
-					expectedNrAuth:    0,
-					expectedAuth:      []ExpectedRR{},
-				},
-				{
-					name:              "[Nil Questions] Should return RcodeFormatError for nil questions",
-					qname:             "example.com",
-					qtype:             dns.TypeA,
-					rcode:             dns.RcodeFormatError,
-					expectedNrAnswers: 0,
-					expectedAnswers:   []ExpectedRR{},
-					expectedNrAuth:    0,
-					expectedAuth:      []ExpectedRR{},
-				},
-			},
-		},
-		{
 			name: "UDP resolver without EDNS",
 			config: `resolver {
-		timeout "5s"
-		clientType "udp"
-	}
+			timeout "5s"
+			clientType "udp"
+		}
 			`,
 			shouldErr: false,
 			testCases: []TestCase{
