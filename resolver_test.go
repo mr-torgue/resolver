@@ -63,17 +63,81 @@ func matchall(rrs []dns.RR, expectedRRs []ExpectedRR) bool {
 	return len(matchedIndices) == len(expectedRRs)
 }
 
+// Test for empty or nil questions
+func TestResolverEmptyQuestions(t *testing.T) {
+	ctx := context.TODO()
+	rec := dnstest.NewRecorder(&test.ResponseWriter{})
+	config := `resolver {
+				timeout "5s"
+				clientType "udp"
+			}
+	`
+	c := caddy.NewTestController("dns", config)
+	x, err := resolverParse(c)
+	x.Next = test.ErrorHandler()
+	assert.Nil(t, err, "expected no error during setup")
+
+	// Test case 1: Empty questions slice
+	t.Run("Empty Questions", func(t *testing.T) {
+		qmsg := &dns.Msg{}
+		qmsg.Question = []dns.Question{}
+		rcode, err := x.ServeDNS(ctx, rec, qmsg)
+		assert.Nil(t, err, "expected no error")
+		assert.Equal(t, dns.RcodeFormatError, rcode, "expected RcodeFormatError for empty questions")
+	})
+
+	// Test case 2: Nil questions
+	t.Run("Nil Questions", func(t *testing.T) {
+		qmsg := &dns.Msg{}
+		qmsg.Question = nil
+		rcode, err := x.ServeDNS(ctx, rec, qmsg)
+		assert.Nil(t, err, "expected no error")
+		assert.Equal(t, dns.RcodeFormatError, rcode, "expected RcodeFormatError for nil questions")
+	})
+}
+
 func TestResolver(t *testing.T) {
 
 	//ctx := context.TODO()
 	rec := dnstest.NewRecorder(&test.ResponseWriter{})
 	tests := []TestCaseConfig{
 		{
-			name: "UDP resolver without EDNS",
+			name: "Query with no questions or zero-length questions",
 			config: `resolver {
 				timeout "5s"
-				clientType "udp"
-			}
+		clientType "udp"
+	}
+			`,
+			shouldErr: false,
+			testCases: []TestCase{
+				{
+					name:              "[No Questions] Should return RcodeFormatError for empty questions",
+					qname:             "",
+					qtype:             dns.TypeA,
+					rcode:             dns.RcodeFormatError,
+					expectedNrAnswers: 0,
+					expectedAnswers:   []ExpectedRR{},
+					expectedNrAuth:    0,
+					expectedAuth:      []ExpectedRR{},
+				},
+				{
+					name:              "[Nil Questions] Should return RcodeFormatError for nil questions",
+					qname:             "example.com",
+					qtype:             dns.TypeA,
+					rcode:             dns.RcodeFormatError,
+					expectedNrAnswers: 0,
+					expectedAnswers:   []ExpectedRR{},
+					expectedNrAuth:    0,
+					expectedAuth:      []ExpectedRR{},
+				},
+			},
+		},
+		{
+			name: "UDP resolver without EDNS",
+			config: `resolver {
+		timeout "5s"
+		clientType "udp"
+	}
 			`,
 			shouldErr: false,
 			testCases: []TestCase{
@@ -230,7 +294,6 @@ func TestResolver(t *testing.T) {
 
 		for _, tt := range ttconfig.testCases {
 			t.Run(tt.name, func(t *testing.T) {
-
 				qmsg.SetQuestion(dns.Fqdn(tt.qname), tt.qtype)
 				rcode, _ := x.ServeDNS(context.Background(), rec, &qmsg)
 				rmsg := rec.Msg

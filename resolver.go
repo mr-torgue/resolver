@@ -33,7 +33,12 @@ type Resolver struct {
 func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	log.Debugf("Received query: %s\n", r.String())
 
-	//create a new question
+	// return an error if question is empty or non-existing
+	if r.Question == nil || len(r.Question) == 0 {
+		return dns.RcodeFormatError, nil
+	}
+
+	// create a new question
 	qmsg := new(dns.Msg)
 	qmsg.SetQuestion(dns.CanonicalName(r.Question[0].Name), r.Question[0].Qtype)
 	if e.DNSSEC {
@@ -42,6 +47,7 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		qmsg.SetEdns0(e.udpsize, false)
 	}
 
+	// get a response
 	rsp := e.R.Exchange(context.Background(), qmsg)
 	if rsp == nil {
 		return dns.RcodeServerFailure, errors.New("resolver failed: no response received")
@@ -54,9 +60,7 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 		return dns.RcodeServerFailure, errors.New("resolver failed: no message in response")
 	}
 	rmsg.Id = r.Id // in case QUIC or TLS is used
-	if len(rmsg.Question) > 0 {
-		rmsg.Question = []dns.Question{r.Question[0]}
-	}
+	rmsg.Question = []dns.Question{r.Question[0]}
 
 	// remove DNSSEC related data from the response if do bit was not set
 	edns0 := r.IsEdns0()
@@ -85,7 +89,12 @@ func (e Resolver) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg
 
 		// restored edns0 if existed
 		if edns0 != nil {
-			rmsg.IsEdns0().SetDo(edns0.Do())
+			opt := rmsg.IsEdns0()
+			if opt == nil {
+				rmsg.SetEdns0(edns0.UDPSize(), false)
+				opt = rmsg.IsEdns0()
+			}
+			opt.SetDo(edns0.Do())
 		} else {
 			// remove OPT record (copied from popEdns0)
 			for i := len(rmsg.Extra) - 1; i >= 0; i-- {
