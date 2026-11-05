@@ -6,7 +6,7 @@ require (
 	github.com/coredns/caddy v1.1.4
 	github.com/mr-torgue/coredns v0.0.4-openssl
 	github.com/mr-torgue/dns v1.1.6
-	github.com/mr-torgue/resolver-lib v1.0.7
+	github.com/mr-torgue/resolver-lib v1.0.8
 	github.com/prometheus/client_golang v1.24.1
 	github.com/stretchr/testify v1.12.1
 )
